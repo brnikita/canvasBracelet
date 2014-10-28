@@ -4,19 +4,9 @@ $(function () {
         circleCenterX = canvas.width / 2,
         circleCenterY = canvas.height / 2,
         circleRadius = 100,
-        decorationsList = [];
-
-    /**
-     * Function returns angle of point of circle
-     *
-     * @function
-     * @param {number} pointX
-     * @param {number} pointY
-     * @returns {number}
-     */
-    function getAngleOfPoint(pointX, pointY) {
-        return Math.atan2(circleCenterY - pointY, circleCenterX - pointX) - Math.PI;
-    }
+        decorationsList = [],
+    //Decoration class
+        Decoration;
 
     /**
      * Function draws circle in canvas field
@@ -28,6 +18,22 @@ $(function () {
         context.beginPath();
         context.arc(circleCenterX, circleCenterY, circleRadius, 0, 2 * Math.PI, false);
         context.stroke();
+    }
+
+    /**
+     * Function returns mouse position
+     *
+     * @function
+     * @param {HTMLElement} canvas
+     * @param {jQuery.Event} event
+     * @returns {{x: number, y: number}}
+     */
+    function getMousePos(canvas, event) {
+        var position = canvas.getBoundingClientRect();
+        return {
+            x: event.clientX - position.left,
+            y: event.clientY - position.top
+        };
     }
 
     /**
@@ -47,6 +53,7 @@ $(function () {
      * @returns {undefined}
      */
     function drawCanvas() {
+        clearAll();
         drawCircle();
 
         $.each(decorationsList, function (index, decoration) {
@@ -55,19 +62,30 @@ $(function () {
     }
 
     /**
+     * Function adds one decoration to decorations list
+     *
+     * @function
+     * @param {Decoration} decoration
+     * @returns {undefined}
+     */
+    function addOneToDecorationList(decoration) {
+        decorationsList.push(decoration);
+    }
+
+    /**
      * Constructor of Decoration class
      *
      * @constructor
      * @param {Object} context Canvas context
      * @param {string} src Url of target image
-     * @param {number} rotateAngle
+     * @param {number} angle
      * @returns {undefined}
      */
-    var Decoration = function (context, src, rotateAngle) {
+    Decoration = function (context, src, angle) {
         this.image = new Image();
         this.context = context;
         this.image.src = src;
-        this.rotateAngle = rotateAngle;
+        this.angle = angle;
     };
 
     /**
@@ -84,12 +102,24 @@ $(function () {
             centerY = this.getCenterY(),
             width = this.getWidth(),
             height = this.getHeight(),
-            angle = this.angle;
+            rotateAngle = this.getRotateAngle();
 
         context.drawImage(image, centerX, centerY, width, height);
         context.translate(circleCenterX, circleCenterY);
-        context.rotate(-angle);
+        context.rotate(-rotateAngle);
         context.translate(-circleCenterX, -circleCenterY);
+    };
+
+    /**
+     * Method makes decoration draggable or not
+     *
+     * @method
+     * @name Decoration#setDraggable
+     * @param {boolean} draggable True if decoration should be draggable
+     * @returns {undefined}
+     */
+    Decoration.prototype.setDraggable = function(draggable){
+        this.draggable = draggable;
     };
 
     /**
@@ -103,14 +133,14 @@ $(function () {
      */
     Decoration.prototype.isPointInside = function (x, y) {
         var radius = this.getRadius(),
-            centerX = this.centerX,
-            centerY = this.centerY;
+            centerX = this.getCenterX(),
+            centerY = this.getCenterY();
 
         return Math.sqrt(Math.pow((centerX - x), 2) + Math.pow((centerY - y), 2)) < radius;
     };
 
     /**
-     * Method returns approximate radius of decoration
+     * Method returns radius of decoration
      *
      * @method
      * @name Decoration#getRadius
@@ -120,7 +150,11 @@ $(function () {
         var width = this.getWidth(),
             height = this.getHeight();
 
-        return (width + height) / 2;
+        if (height > width) {
+            return height / 2;
+        }
+
+        return width / 2;
     };
 
     /**
@@ -152,9 +186,12 @@ $(function () {
      * @name Decoration#getCenterX
      * @returns {number}
      */
-    Decoration.prototype.getCenterX = function(){
-        var width = this.getWidth();
-        return circleCenterX + circleRadius - width / 2;
+    Decoration.prototype.getCenterX = function () {
+        var angle = this.angle,
+            decorationRadius = this.getRadius(),
+            circleX = circleCenterX + (Math.cos(angle) * circleRadius);
+
+        return circleX - decorationRadius;
     };
 
     /**
@@ -164,9 +201,23 @@ $(function () {
      * @name Decoration#getCenterY
      * @returns {number}
      */
-    Decoration.prototype.getCenterY = function(){
-        var height = this.getHeight();
-        return circleCenterY - height / 2;
+    Decoration.prototype.getCenterY = function () {
+        var angle = this.angle,
+            decorationRadius = this.getRadius(),
+            circleY = circleCenterY + (Math.sin(angle) * circleRadius);
+
+        return circleY - decorationRadius;
+    };
+
+    /**
+     * Method returns angle of rotation of decoration by decoration center
+     *
+     * @method
+     * @name Decoration#getRotateAngle
+     * @returns {number}
+     */
+    Decoration.prototype.getRotateAngle = function () {
+        return 0;
     };
 
     /**
@@ -212,8 +263,32 @@ $(function () {
             decorationSrc = $this.attr('src'),
             decoration = new Decoration(context, decorationSrc, 0);
 
-        decorationsList.push(decoration);
+        addOneToDecorationList(decoration);
         drawCanvas();
+    });
+
+    $('#canvas').on('click', function(event){
+        e.stopPropagation();
+        var pos = getMousePos(canvas, event);
+        var mouseX = parseInt(pos.x);
+        var mouseY = parseInt(pos.y);
+
+        for (var i = 0; i < states.length; i++) {
+
+            var state = states[i];
+            if (state.dragging) {
+                state.dragging = false;
+                state.draw();
+                continue;
+            }
+            if (state.contextIndex == contextIndex && mouseX > state.x && mouseX < state.x + state.width && mouseY > state.y && mouseY < state.y + state.height) {
+                state.dragging = true;
+                state.offsetX = mouseX - state.x;
+                state.offsetY = mouseY - state.y;
+                state.contextIndex = contextIndex;
+                state.draw();
+            }
+        }
     });
 
     drawCanvas();
