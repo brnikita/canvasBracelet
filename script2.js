@@ -105,21 +105,21 @@ $(function () {
             image = this.image,
             width = this.getWidth(),
             height = this.getHeight(),
-            centerX = this.getCenterX() - width / 2,
-            centerY = this.getCenterY() - height / 2,
+            centerX = this.getCenterX(),
+            centerY = this.getCenterY(),
             rotateAngle = this.getRotateAngle();
 
-        context.translate(circleCenterX, circleCenterY);
+        context.translate(centerX, centerY);
         context.rotate(rotateAngle);
-        context.translate(-circleCenterX, -circleCenterY);
-        context.drawImage(image, centerX, centerY, width, height);
+        context.translate(-centerX, -centerY);
+        context.drawImage(image, centerX - width / 2, centerY - height / 2, width, height);
         if (this.dragging) {
             context.strokeStyle = '#000';
-            context.strokeRect(centerX, centerY, width, height);
+            context.strokeRect(centerX - width / 2, centerY - height / 2, width, height);
         }
-        context.translate(circleCenterX, circleCenterY);
+        context.translate(centerX, centerY);
         context.rotate(-rotateAngle);
-        context.translate(-circleCenterX, -circleCenterY);
+        context.translate(-centerX, -centerY);
     };
 
     /**
@@ -221,7 +221,7 @@ $(function () {
      * @returns {number}
      */
     Decoration.prototype.getRotateAngle = function () {
-        return this.angle;
+        return this.angle - 2 * Math.PI;
     };
 
     /**
