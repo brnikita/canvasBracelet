@@ -227,40 +227,109 @@ $(function () {
     };
 
     /**
-     * Method sets center of decoration
+     * Method returns angle of first point of decoration on the circle
      *
      * @method
-     * @name Decoration#setCenter
-     * @param {number} x Position x of center
-     * @param {number} y Position y of center
-     * @returns {undefined}
+     * @name Decoration#getStartAngle
+     * @returns {number}
      */
-    Decoration.prototype.setCenter = function (x, y) {
+    Decoration.prototype.getStartAngle = function(){
 
     };
 
     /**
-     * Method sets next decoration on the circle line
+     * Method returns angle of last point of decoration on the circle
      *
      * @method
-     * @name Decoration#setNext
-     * @param {Decoration} nextDecoration
-     * @returns {undefined}
+     * @name Decoration#getStartAngle
+     * @returns {number}
      */
-    Decoration.prototype.setNext = function (nextDecoration) {
+    Decoration.prototype.getLastAngle = function(){
 
     };
 
     /**
-     * Method sets previous decoration on the circle line
+     * Method returns previous decoration on the circle line
      *
      * @method
-     * @name Decoration#setNext
-     * @param {Decoration} previousDecoration
-     * @returns {undefined}
+     * @name Decoration#getPrevious
+     * @returns {Decoration | null}
      */
-    Decoration.prototype.setNext = function (previousDecoration) {
+    Decoration.prototype.getPrevious = function () {
+        var currentAngle = this.angle,
+            previousDecoration,
+            maxAngleDecoration;
 
+        if (decorationsList.length === 0) {
+            return null;
+        }
+
+        maxAngleDecoration = decorationsList[0];
+        $.each(decorationsList, function (index, decoration) {
+            var previousAngle,
+                maxAngle = maxAngleDecoration.angle,
+                angle = decoration.angle;
+
+            if (angle < currentAngle) {
+                if (previousDecoration) {
+                    previousAngle = previousDecoration.angle;
+                    if (previousAngle > angle) {
+                        previousDecoration = decoration;
+                    }
+                } else {
+                    previousDecoration = decoration;
+                }
+            }
+
+            if (angle > maxAngle) {
+                maxAngleDecoration = decoration;
+            }
+        });
+
+        console.log(previousDecoration || maxAngleDecoration);
+        return previousDecoration || maxAngleDecoration;
+    };
+
+    /**
+     * Method returns next decoration on the circle line
+     *
+     * @method
+     * @name Decoration#getNext
+     * @returns {Decoration | null}
+     */
+    Decoration.prototype.getNext = function () {
+        var currentAngle = this.angle,
+            nextDecoration,
+            minAngleDecoration;
+
+        if (decorationsList.length === 0) {
+            return null;
+        }
+
+        minAngleDecoration = decorationsList[0];
+        $.each(decorationsList, function (index, decoration) {
+            var nextAngle,
+                minAngle = minAngleDecoration.angle,
+                angle = decoration.angle;
+
+            if (angle > currentAngle) {
+                if (nextDecoration) {
+                    nextAngle = nextDecoration.angle;
+                    if (nextAngle < angle) {
+                        nextDecoration = decoration;
+                    }
+                } else {
+                    nextDecoration = decoration;
+                }
+            }
+
+            if (angle < minAngle) {
+                minAngleDecoration = decoration;
+            }
+        });
+
+        console.log(nextDecoration || minAngleDecoration);
+        return nextDecoration || minAngleDecoration;
     };
 
     /**
@@ -319,7 +388,6 @@ $(function () {
         $.each(decorationsList, function (index, decoration) {
             if (decoration.dragging) {
                 angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
-                console.log(angle);
                 decoration.setAngle(angle);
                 drawBracelet();
                 return false;
