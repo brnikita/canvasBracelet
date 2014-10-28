@@ -1,210 +1,331 @@
-// canvas stuff
-var canvas = document.getElementById("canvas"),
-    ctx = canvas.getContext("2d"),
-    centerX = canvas.width / 2,
-    centerY = canvas.height / 2,
-    radius = 100,
-    contexts = [],
-    points = [],
-// image stuff
-    states = [],
-    img = new Image();
+$(function () {
+    var canvas = document.getElementById('canvas'),
+        context = canvas.getContext('2d'),
+        circleCenterX = canvas.width / 2,
+        circleCenterY = canvas.height / 2,
+        circleRadius = 100,
+        isDragging = false,
+        decorationsList = [],
+    //Decoration class
+        Decoration;
 
-img.src = "http://s25.postimg.org/bploq7onf/gem_agate_002.png";
+    /**
+     * Function draws circle in canvas field
+     *
+     * @function
+     * @name drawCircle
+     * @returns {undefined}
+     */
+    function drawCircle() {
+        context.beginPath();
+        context.arc(circleCenterX, circleCenterY, circleRadius, 0, 2 * Math.PI, false);
+        context.stroke();
+    }
 
-setUpCanvas();
-setUpPoints();
+    /**
+     * Function clears canvas field
+     *
+     * @function
+     * @returns {undefined}
+     */
+    function clearAll() {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+    }
 
-function setUpCanvas() {
-    contexts.push(canvas.getContext("2d"));
-    // link the new canvas to its context in the contexts[] array
-    canvas.contextIndex = contexts.length;
-    // wire up the click handler
-    canvas.onclick = function (e) {
-        handleClick(e, this.contextIndex);
-    };
-    // wire up the mousemove handler
-    canvas.onmousemove = function (e) {
-        handleMousemove(e, this.contextIndex);
-    };
-    canvas.addEventListener('dblclick', function () {
-        removeState(this.contextIndex);
-    });
-}
+    /**
+     * Function returns mouse position
+     *
+     * @function
+     * @name getMousePosition
+     * @param {HTMLElement} canvas
+     * @param {jQuery.Event} event
+     * @returns {{x: number, y: number}}
+     */
+    function getMousePosition(canvas, event) {
+        var position = canvas.getBoundingClientRect();
+        return {
+            x: event.clientX - position.left,
+            y: event.clientY - position.top
+        };
+    }
 
-function getMousePos(canvas, evt) {
-    var position = canvas.getBoundingClientRect();
-    return {
-        x: evt.clientX - position.left,
-        y: evt.clientY - position.top
-    };
-}
+    /**
+     * Function draws bracelet
+     *
+     * @function
+     * @name drawBracelet
+     * @returns {undefined}
+     */
+    function drawBracelet() {
+        clearAll();
+        drawCircle();
 
-function setUpPoints() {
-    //points that make up a circle circumference to an array
-    points = [];
-    for (var degree = 0; degree < 360; degree++) {
-        var radians = degree * Math.PI / 180,
-            xpoint = centerX + radius * Math.cos(radians),
-            ypoint = centerY + radius * Math.sin(radians);
-
-        points.push({
-            x: xpoint,
-            y: ypoint
+        $.each(decorationsList, function (index, decoration) {
+            decoration.draw();
         });
     }
 
-    ctx.beginPath();
-    ctx.moveTo(points[0].x + 4, points[0].y + 4);
-
-    //draws the thin line on the canvas
-    for (var i = 1; i < points.length; i++) {
-        var pt = points[i];
-        ctx.lineTo(pt.x + 4, pt.y + 4);
+    /**
+     * Function adds one decoration to decorations list
+     *
+     * @function
+     * @name addOneToDecorationList
+     * @param {Decoration} decoration
+     * @returns {undefined}
+     */
+    function addOneToDecorationList(decoration) {
+        decorationsList.push(decoration);
     }
-    ctx.stroke(); //end of drawing the thin line
-}
 
-function addCircle() {
-    ctx.beginPath();
-    ctx.moveTo(points[0].x + 4, points[0].y + 4);
-    //draws the thin line on the canvas
-    for (var i = 1; i < points.length; i++) {
-        var pt = points[i];
-        ctx.lineTo(pt.x + 4, pt.y + 4);
-    }
-    ctx.stroke(); //end of drawing the thin line
-}
-
-function clearAll() {
-    //Clear all canvases
-    for (var i = 0; i < contexts.length; i++) {
-        var context = contexts[i];
-        context.clearRect(0, 0, canvas.width, canvas.height);
-    }
-}
-
-function handleClick(e, contextIndex) {
-    e.stopPropagation();
-    var pos = getMousePos(canvas, e);
-    var mouseX = parseInt(pos.x);
-    var mouseY = parseInt(pos.y);
-
-    for (var i = 0; i < states.length; i++) {
-
-        var state = states[i];
-        if (state.dragging) {
-            state.dragging = false;
-            state.draw();
-            continue;
-        }
-        if (state.contextIndex == contextIndex && mouseX > state.x && mouseX < state.x + state.width && mouseY > state.y && mouseY < state.y + state.height) {
-            state.dragging = true;
-            state.offsetX = mouseX - state.x;
-            state.offsetY = mouseY - state.y;
-            state.contextIndex = contextIndex;
-            state.draw();
-        }
-    }
-}
-
-function getAngleOfPoint(pointX, pointY) {
-    return Math.atan2(centerY - pointY, centerX - pointX) - Math.PI;
-}
-
-function handleMousemove(e, contextIndex) {
-    e.stopPropagation();
-    var i,
-        pos = getMousePos(canvas, e),
-        mouseX = parseInt(pos.x),
-        mouseY = parseInt(pos.y);
-
-    clearAll();
-    addCircle();
-
-    var minDistance = 1000;
-
-    for (i = 0; i < states.length; i++) {
-
-        var state = states[i];
-
-        if (state.dragging) {
-            for (i = 0; i < points.length; i++) {
-                var pt = points[i];
-                var dx = mouseX - pt.x;
-                var dy = mouseY - pt.y;
-                var distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    //points in relation to the constrained line (where it will be drawn to)
-                    //reset state.x and state.y to closest point on the line
-                    state.x = pt.x - img.width / 2;
-                    state.y = pt.y - img.height / 2;
-                    state.rotate = getAngleOfPoint(pt.x, pt.y);
-                    state.centerX = pt.x;
-                    state.centerY = pt.y;
-                    state.contextIndex = contextIndex;
-                }
-            }
-        }
-        state.draw();
-
-    }
-}
-
-function removeState() {
-    console.log("called");
-}
-
-function addState(image) {
-    var ptxy = points[1],
-        state = {};
-    state.dragging = false;
-    state.contextIndex = 1;
-    state.image = image;
-    state.x = ptxy.x - image.width / 2;
-    state.y = ptxy.y - image.height / 2;
-    state.width = image.width;
-    state.height = image.height;
-    state.offsetX = 0;
-    state.offsetY = 0;
-    state.rotate = 0;
-    state.draw = function () {
-        var context = contexts[this.contextIndex - 1];
-        if (this.dragging) {
-            context.translate(this.centerX, this.centerY);
-            context.rotate(state.rotate);
-            context.translate(-this.centerX, -this.centerY);
-            context.strokeStyle = 'black';
-            context.strokeRect(this.x - 1, this.y - 1, this.width + 2, this.height + 2);
-            context.drawImage(this.image, this.x, this.y, this.width, this.height);
-            context.translate(this.centerX, this.centerY);
-            context.rotate(-state.rotate);
-            context.translate(-this.centerX, -this.centerY);
-        } else {
-            context.translate(this.centerX, this.centerY);
-            context.rotate(state.rotate);
-            context.translate(-this.centerX, -this.centerY);
-            context.drawImage(this.image, this.x, this.y);
-            context.translate(this.centerX, this.centerY);
-            context.rotate(-state.rotate);
-            context.translate(-this.centerX, -this.centerY);
-        }
+    /**
+     * Constructor of Decoration class
+     *
+     * @constructor
+     * @param {Object} context Canvas context
+     * @param {string} src Url of target image
+     * @param {number} angle
+     * @returns {undefined}
+     */
+    Decoration = function (context, src, angle) {
+        this.image = new Image();
+        this.context = context;
+        this.image.src = src;
+        this.angle = angle;
+        this.dragging = false;
     };
 
-    state.draw();
-    return (state);
-}
+    /**
+     * Method draws decoration on the circle
+     *
+     * @method
+     * @name Decoration#draw
+     * @returns {undefined}
+     */
+    Decoration.prototype.draw = function () {
+        var context = this.context,
+            image = this.image,
+            width = this.getWidth(),
+            height = this.getHeight(),
+            centerX = this.getCenterX(),
+            centerY = this.getCenterY(),
+            rotateAngle = this.getRotateAngle();
 
-$("#button1").click(function () {
-    states.push(addState(img));
-});
-$("#button2").click(function () {
-    states.push(addState(img));
-});
-$("#button3").click(function () {
-    states.push(addState(img));
-});
-$("#button4").click(function () {
-    states.push(addState(img));
+        context.translate(centerX, centerY);
+        context.rotate(rotateAngle);
+        context.translate(-centerX, -centerY);
+        context.drawImage(image, centerX - width / 2, centerY - height / 2, width, height);
+        if (this.dragging) {
+            context.strokeStyle = '#000';
+            context.strokeRect(centerX - width / 2, centerY - height / 2, width, height);
+        }
+        context.translate(centerX, centerY);
+        context.rotate(-rotateAngle);
+        context.translate(-centerX, -centerY);
+    };
+
+    /**
+     * Method makes decoration draggable or not
+     *
+     * @method
+     * @name Decoration#setDraggable
+     * @param {boolean} dragging True if decoration should be draggable
+     * @returns {undefined}
+     */
+    Decoration.prototype.setDraggable = function (dragging) {
+        this.dragging = dragging;
+        isDragging = dragging;
+    };
+
+    /**
+     * Method returns true if point belongs to decoration
+     *
+     * @method
+     * @name Decoration#isPointInside
+     * @param {number} x
+     * @param {number} y
+     * @returns {boolean}
+     */
+    Decoration.prototype.isPointInside = function (x, y) {
+        var radius = this.getRadius(),
+            centerX = this.getCenterX(),
+            centerY = this.getCenterY();
+
+        return Math.sqrt(Math.pow((centerX - x), 2) + Math.pow((centerY - y), 2)) < radius;
+    };
+
+    /**
+     * Method returns radius of decoration
+     *
+     * @method
+     * @name Decoration#getRadius
+     * @returns {number}
+     */
+    Decoration.prototype.getRadius = function () {
+        var width = this.getWidth(),
+            height = this.getHeight();
+
+        if (height > width) {
+            return height / 2;
+        }
+
+        return width / 2;
+    };
+
+    /**
+     * Method returns width of decoration image
+     *
+     * @method
+     * @name Decoration#setCenter
+     * @returns {number}
+     */
+    Decoration.prototype.getWidth = function () {
+        return this.image.width;
+    };
+
+    /**
+     * Method returns height of decoration image
+     *
+     * @method
+     * @name Decoration#setCenter
+     * @returns {number}
+     */
+    Decoration.prototype.getHeight = function () {
+        return this.image.height;
+    };
+
+    /**
+     * Method returns x coordinate of decoration center;
+     *
+     * @method
+     * @name Decoration#getCenterX
+     * @returns {number}
+     */
+    Decoration.prototype.getCenterX = function () {
+        return circleCenterX + (Math.cos(this.angle) * circleRadius);
+    };
+
+    /**
+     * Method returns x coordinate of decoration center;
+     *
+     * @method
+     * @name Decoration#getCenterY
+     * @returns {number}
+     */
+    Decoration.prototype.getCenterY = function () {
+        return circleCenterY + (Math.sin(this.angle) * circleRadius);
+    };
+
+    /**
+     * Method returns angle of rotation of decoration by decoration center
+     *
+     * @method
+     * @name Decoration#getRotateAngle
+     * @returns {number}
+     */
+    Decoration.prototype.getRotateAngle = function () {
+        return this.angle - 2 * Math.PI;
+    };
+
+    /**
+     * Method sets center of decoration
+     *
+     * @method
+     * @name Decoration#setCenter
+     * @param {number} x Position x of center
+     * @param {number} y Position y of center
+     * @returns {undefined}
+     */
+    Decoration.prototype.setCenter = function (x, y) {
+
+    };
+
+    /**
+     * Method sets next decoration on the circle line
+     *
+     * @method
+     * @name Decoration#setNext
+     * @param {Decoration} nextDecoration
+     * @returns {undefined}
+     */
+    Decoration.prototype.setNext = function (nextDecoration) {
+
+    };
+
+    /**
+     * Method sets previous decoration on the circle line
+     *
+     * @method
+     * @name Decoration#setNext
+     * @param {Decoration} previousDecoration
+     * @returns {undefined}
+     */
+    Decoration.prototype.setNext = function (previousDecoration) {
+
+    };
+
+    /**
+     * Method sets angle of decoration
+     *
+     * @method
+     * @name Decoration#setAngle
+     * @param {number} angle
+     * @returns {undefined}
+     */
+    Decoration.prototype.setAngle = function (angle) {
+        this.angle = angle;
+    };
+
+
+    $('.js-decoration').on('click', function () {
+        var $this = $(this),
+            decorationSrc = $this.attr('src'),
+            decoration = new Decoration(context, decorationSrc, 0);
+
+        addOneToDecorationList(decoration);
+        drawBracelet();
+    });
+
+    $('#canvas').on('click', function (event) {
+        var position = getMousePosition(canvas, event),
+            mouseX = parseInt(position.x),
+            mouseY = parseInt(position.y);
+
+        $.each(decorationsList, function (index, decoration) {
+            if (decoration.dragging) {
+                decoration.setDraggable(false);
+                return;
+            }
+
+            if (decoration.isPointInside(mouseX, mouseY)) {
+                decoration.setDraggable(true);
+            }
+        });
+
+        drawBracelet();
+    }).on('mousemove', function (event) {
+        var angle,
+            position,
+            mouseX,
+            mouseY;
+
+        if (!isDragging) {
+            return;
+        }
+
+        position = getMousePosition(canvas, event);
+        mouseX = parseInt(position.x);
+        mouseY = parseInt(position.y);
+
+        $.each(decorationsList, function (index, decoration) {
+            if (decoration.dragging) {
+                angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
+                console.log(angle);
+                decoration.setAngle(angle);
+                drawBracelet();
+                return false;
+            }
+        });
+    });
+
+    drawBracelet();
 });
