@@ -91,7 +91,7 @@ $(function () {
 
         $.each(decorationsList, function (index, decoration) {
             if (decoration.angle === angle) {
-                decoration.setAngle(angle + 0.1);
+                decoration.setAngle(angle);
             }
         });
 
@@ -184,14 +184,16 @@ $(function () {
      * @returns {boolean}
      */
     Decoration.prototype.isDecorationsIntersect = function (decoration1, decoration2) {
-        var x1 = decoration1.getCenterX(),
-            x2 = decoration1.getCenterX(),
-            y1 = decoration2.getCenterY(),
+        var angleSector1 = decoration1.getSectorAngle(),
+            angleSector2 = decoration2.getSectorAngle(),
+            x1 = decoration1.getCenterX(),
+            x2 = decoration2.getCenterX(),
+            y1 = decoration1.getCenterY(),
             y2 = decoration2.getCenterY(),
-            radius1 = decoration1.getRadius(),
-            radius2 = decoration2.getRadius();
+            centersDestination = Math.sqrt(Math.pow((x1- x2), 2) + Math.pow((y1 - y2), 2)),
+            minDestination = Math.sin(angleSector1 / 2) * circleRadius + Math.sin(angleSector2 / 2) * circleRadius;
 
-        return Math.sqrt(Math.pow((x1- x2), 2) + Math.pow((y1 - y2), 2)) < radius1 + radius2;
+        return Math.round(centersDestination) < Math.round(minDestination);
     };
 
     /**
@@ -315,6 +317,20 @@ $(function () {
     };
 
     /**
+     * Method returns angle of sector of decoration
+     *
+     * @method
+     * @name Decoration#getSectorAngle
+     * @returns {number}
+     */
+    Decoration.prototype.getSectorAngle = function () {
+        var startAngle = this.getStartAngle(),
+            endAngle = this.getEndAngle();
+
+        return this.getAnglesDiff(startAngle, endAngle);
+    };
+
+    /**
      * Method returns diff between 2 angles by clockwise
      *
      * @method
@@ -425,17 +441,14 @@ $(function () {
 
             if (this.isDecorationsIntersect(nextDecoration, this)) {
                 moveAngle = this.getAnglesDiff(nextDecorationStartAngle, endAngle);
-                nextDecoration.setAngle(nextDecoration.angle + moveAngle + 0.001);
-                console.log(nextDecoration.angle + moveAngle + 0.001);
+                nextDecoration.setAngle(nextDecoration.angle + moveAngle);
             }
 
             if (this.isDecorationsIntersect(previousDecoration, this)) {
                 moveAngle = this.getAnglesDiff(startAngle, previousDecorationEndAngle);
-                previousDecoration.setAngle(previousDecoration.angle - moveAngle - 0.001);
-                console.log(previousDecoration.angle - moveAngle - 0.001);
+                previousDecoration.setAngle(previousDecoration.angle - moveAngle);
             }
         }
-        console.log(decorationsList);
     };
 
 
