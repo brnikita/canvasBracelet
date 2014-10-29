@@ -75,7 +75,9 @@ $(function () {
      * @returns {undefined}
      */
     function addOneToDecorationList(decorationSrc, angle) {
-        var decoration;
+        var circleLength = 2 * Math.PI * circleRadius,
+            decorationsLength = 0,
+            decoration;
 
         $.each(decorationsList, function (index, decoration) {
             if (decoration.angle === angle) {
@@ -84,6 +86,16 @@ $(function () {
         });
 
         decoration = new Decoration(context, decorationSrc, angle);
+        decorationsLength += 2 * decoration.getRadius();
+        $.each(decorationsList, function (index, decoration) {
+            decorationsLength += 2 * decoration.getRadius();
+        });
+
+        if (decorationsLength > circleLength) {
+            alert('Is too much decorations!');
+            return;
+        }
+
         decorationsList.push(decoration);
     }
 
@@ -101,7 +113,7 @@ $(function () {
             return angle;
         }
 
-        return 2 * Math.PI - angle;
+        return 2 * Math.PI + angle;
     }
 
     /**
@@ -178,7 +190,7 @@ $(function () {
             endAngleDiff = this.getAnglesDiff(angle, endAngle),
             startAngleDiff = this.getAnglesDiff(startAngle, angle);
 
-        return decorationSectorAngle === endAngleDiff + startAngleDiff;
+        return decorationSectorAngle.toFixed(3) === (endAngleDiff + startAngleDiff).toFixed(3);
     };
 
     /**
@@ -283,11 +295,7 @@ $(function () {
             decorationRadius = this.getRadius(),
             startAngle = angle - 2 * Math.atan2(decorationRadius / 2, circleRadius);
 
-        if (startAngle > 0) {
-            return startAngle;
-        }
-
-        return 2 * Math.PI - startAngle;
+        return getCorrectAngle(startAngle);
     };
 
     /**
@@ -302,11 +310,7 @@ $(function () {
             decorationRadius = this.getRadius(),
             endAngle = angle + 2 * Math.atan2(decorationRadius / 2, circleRadius);
 
-        if (endAngle > 0) {
-            return endAngle;
-        }
-
-        return 2 * Math.PI - endAngle;
+        return getCorrectAngle(endAngle);
     };
 
     /**
@@ -323,10 +327,16 @@ $(function () {
         nextAngle = getCorrectAngle(nextAngle);
 
         if (previousAngle > nextAngle) {
-            return nextAngle + 2 * Math.PI - previousAngle;
+            return getCorrectAngle(nextAngle + 2 * Math.PI - previousAngle);
         }
 
-        return nextAngle - previousAngle;
+        if (previousAngle < Math.PI / 2) {
+            if (nextAngle > 3 / 2 * Math.PI && nextAngle < 2 * Math.PI) {
+                return 2 * Math.PI + previousAngle - nextAngle;
+            }
+        }
+
+        return getCorrectAngle(nextAngle - previousAngle);
     };
 
     /**
