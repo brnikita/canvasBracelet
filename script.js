@@ -190,7 +190,7 @@ $(function () {
             x2 = decoration2.getCenterX(),
             y1 = decoration1.getCenterY(),
             y2 = decoration2.getCenterY(),
-            centersDestination = Math.sqrt(Math.pow((x1- x2), 2) + Math.pow((y1 - y2), 2)),
+            centersDestination = Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2)),
             minDestination = Math.sin(angleSector1 / 2) * circleRadius + Math.sin(angleSector2 / 2) * circleRadius;
 
         return Math.round(centersDestination) < Math.round(minDestination);
@@ -347,12 +347,6 @@ $(function () {
             return getCorrectAngle(nextAngle + 2 * Math.PI - previousAngle);
         }
 
-        if (previousAngle < Math.PI / 2) {
-            if (nextAngle > 3 / 2 * Math.PI && nextAngle < 2 * Math.PI) {
-                return 2 * Math.PI + previousAngle - nextAngle;
-            }
-        }
-
         return getCorrectAngle(nextAngle - previousAngle);
     };
 
@@ -369,17 +363,7 @@ $(function () {
             currentAngle = this.angle,
             minAnglesDiff = 2 * Math.PI,
             getAnglesDiff = this.getAnglesDiff,
-            previousDecoration;
-
-        if (decorationsList.length === 0) {
-            return null;
-        }
-
-        if (decorationsList.length === 1) {
-            if (this === decorationsList[0]) {
-                return null;
-            }
-        }
+            previousDecoration = null;
 
         $.each(decorationsList, function (index, decoration) {
             var angle,
@@ -413,6 +397,18 @@ $(function () {
     };
 
     /**
+     * Method returns true if motion is going by clockwise
+     *
+     * @method
+     * @param {number} previousAngle
+     * @param {number} nextAngle
+     * @returns {boolean}
+     */
+    Decoration.prototype.isByClockwise = function (previousAngle, nextAngle) {
+        return this.getAnglesDiff(previousAngle, nextAngle) < this.getAnglesDiff(nextAngle, previousAngle);
+    };
+
+    /**
      * Method sets angle of decoration
      *
      * @method
@@ -427,6 +423,7 @@ $(function () {
             nextDecorationStartAngle,
             previousDecorationEndAngle,
             startAngle,
+            oldAngle = this.angle,
             endAngle;
 
         this.angle = getCorrectAngle(angle);
@@ -439,14 +436,16 @@ $(function () {
             startAngle = this.getStartAngle();
             endAngle = this.getEndAngle();
 
-            if (this.isDecorationsIntersect(nextDecoration, this)) {
-                moveAngle = this.getAnglesDiff(nextDecorationStartAngle, endAngle);
-                nextDecoration.setAngle(nextDecoration.angle + moveAngle);
-            }
-
-            if (this.isDecorationsIntersect(previousDecoration, this)) {
-                moveAngle = this.getAnglesDiff(startAngle, previousDecorationEndAngle);
-                previousDecoration.setAngle(previousDecoration.angle - moveAngle);
+            if (this.isByClockwise(oldAngle, angle)) {
+                if (this.isDecorationsIntersect(nextDecoration, this)) {
+                    moveAngle = this.getAnglesDiff(nextDecorationStartAngle, endAngle);
+                    nextDecoration.setAngle(nextDecoration.angle + moveAngle);
+                }
+            } else {
+                if (this.isDecorationsIntersect(previousDecoration, this)) {
+                    moveAngle = this.getAnglesDiff(startAngle, previousDecorationEndAngle);
+                    previousDecoration.setAngle(previousDecoration.angle - moveAngle);
+                }
             }
         }
     };
@@ -460,7 +459,7 @@ $(function () {
         drawBracelet();
     });
 
-    $('#canvas').on('click',function (event) {
+    $('#canvas').on('click', function (event) {
         var position = getMousePosition(canvas, event),
             mouseX = parseInt(position.x),
             mouseY = parseInt(position.y);
@@ -478,28 +477,28 @@ $(function () {
 
         drawBracelet();
     }).on('mousemove', function (event) {
-            var angle,
-                position,
-                mouseX,
-                mouseY;
+        var angle,
+            position,
+            mouseX,
+            mouseY;
 
-            if (!isDragging) {
-                return;
+        if (!isDragging) {
+            return;
+        }
+
+        position = getMousePosition(canvas, event);
+        mouseX = parseInt(position.x);
+        mouseY = parseInt(position.y);
+
+        $.each(decorationsList, function (index, decoration) {
+            if (decoration.dragging) {
+                angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
+                decoration.setAngle(angle);
+                drawBracelet();
+                return false;
             }
-
-            position = getMousePosition(canvas, event);
-            mouseX = parseInt(position.x);
-            mouseY = parseInt(position.y);
-
-            $.each(decorationsList, function (index, decoration) {
-                if (decoration.dragging) {
-                    angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
-                    decoration.setAngle(angle);
-                    drawBracelet();
-                    return false;
-                }
-            });
         });
+    });
 
     drawBracelet();
 });
