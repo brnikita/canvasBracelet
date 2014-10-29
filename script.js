@@ -70,10 +70,19 @@ $(function () {
      *
      * @function
      * @name addOneToDecorationList
-     * @param {Decoration} decoration
+     * @param {string} decorationSrc
      * @returns {undefined}
      */
-    function addOneToDecorationList(decoration) {
+    function addOneToDecorationList(decorationSrc) {
+        var decoration;
+
+        $.each(decorationsList, function (index, decoration) {
+            if (decoration.angle === 0) {
+                decoration.setAngle(0.1);
+            }
+        });
+
+        decoration = new Decoration(context, decorationSrc, 0);
         decorationsList.push(decoration);
     }
 
@@ -90,8 +99,8 @@ $(function () {
         this.image = new Image();
         this.context = context;
         this.image.src = src;
-        this.angle = angle;
-        this.dragging = false;
+        this.setAngle(angle);
+        this.setDraggable(false);
     };
 
     /**
@@ -233,19 +242,52 @@ $(function () {
      * @name Decoration#getStartAngle
      * @returns {number}
      */
-    Decoration.prototype.getStartAngle = function(){
+    Decoration.prototype.getStartAngle = function () {
+        var angle = this.angle,
+            decorationRadius = this.getRadius(),
+            startAngle = angle - 2 * Math.atan2(decorationRadius / 2, circleRadius);
 
+        if (startAngle > 0) {
+            return startAngle;
+        }
+
+        return 2 * Math.PI - startAngle;
     };
 
     /**
      * Method returns angle of last point of decoration on the circle
      *
      * @method
-     * @name Decoration#getStartAngle
+     * @name Decoration#getEndAngle
      * @returns {number}
      */
-    Decoration.prototype.getLastAngle = function(){
+    Decoration.prototype.getEndAngle = function () {
+        var angle = this.angle,
+            decorationRadius = this.getRadius(),
+            endAngle = angle + 2 * Math.atan2(decorationRadius / 2, circleRadius);
 
+        if (endAngle > 0) {
+            return endAngle;
+        }
+
+        return 2 * Math.PI - endAngle;
+    };
+
+    /**
+     * Method returns diff between 2 angles by clockwise
+     *
+     * @method
+     * @name Decoration#getAnglesDiff
+     * @param {number} previousAngle
+     * @param {number} nextAngle
+     * @returns {number}
+     */
+    Decoration.prototype.getAnglesDiff = function (previousAngle, nextAngle) {
+        if (previousAngle > nextAngle) {
+            return nextAngle + 2 * Math.PI - previousAngle;
+        }
+
+        return nextAngle - previousAngle;
     };
 
     /**
@@ -256,7 +298,8 @@ $(function () {
      * @returns {Decoration | null}
      */
     Decoration.prototype.getPrevious = function () {
-        var currentAngle = this.angle,
+        var that = this,
+            currentAngle = this.angle,
             previousDecoration,
             maxAngleDecoration;
 
@@ -264,11 +307,21 @@ $(function () {
             return null;
         }
 
+        if (decorationsList.length === 1) {
+            if (this === decorationsList[0]) {
+                return null;
+            }
+        }
+
         maxAngleDecoration = decorationsList[0];
         $.each(decorationsList, function (index, decoration) {
             var previousAngle,
                 maxAngle = maxAngleDecoration.angle,
                 angle = decoration.angle;
+
+            if (decoration === that) {
+                return;
+            }
 
             if (angle < currentAngle) {
                 if (previousDecoration) {
@@ -286,7 +339,6 @@ $(function () {
             }
         });
 
-        console.log(previousDecoration || maxAngleDecoration);
         return previousDecoration || maxAngleDecoration;
     };
 
@@ -298,7 +350,8 @@ $(function () {
      * @returns {Decoration | null}
      */
     Decoration.prototype.getNext = function () {
-        var currentAngle = this.angle,
+        var that = this,
+            currentAngle = this.angle,
             nextDecoration,
             minAngleDecoration;
 
@@ -306,11 +359,21 @@ $(function () {
             return null;
         }
 
+        if (decorationsList.length === 1) {
+            if (this === decorationsList[0]) {
+                return null;
+            }
+        }
+
         minAngleDecoration = decorationsList[0];
         $.each(decorationsList, function (index, decoration) {
             var nextAngle,
                 minAngle = minAngleDecoration.angle,
                 angle = decoration.angle;
+
+            if (decoration === that) {
+                return;
+            }
 
             if (angle > currentAngle) {
                 if (nextDecoration) {
@@ -328,7 +391,6 @@ $(function () {
             }
         });
 
-        console.log(nextDecoration || minAngleDecoration);
         return nextDecoration || minAngleDecoration;
     };
 
@@ -341,20 +403,34 @@ $(function () {
      * @returns {undefined}
      */
     Decoration.prototype.setAngle = function (angle) {
-        this.angle = angle;
+        var previousDecoration,
+            nextDecoration,
+            nextDecorationStartAngle,
+            previousDecorationEndAngle,
+            startAngle,
+            endAngle;
+
+        this.angle = angle < 2 * Math.PI ? angle : 2 * Math.PI - angle;
+        previousDecoration = this.getPrevious();
+        nextDecoration = this.getNext();
+        if (previousDecoration && nextDecoration) {
+            previousDecorationEndAngle = previousDecoration.getEndAngle();
+            nextDecorationStartAngle = nextDecoration.getStartAngle();
+            startAngle = this.getStartAngle();
+            endAngle = this.getEndAngle();
+        }
     };
 
 
     $('.js-decoration').on('click', function () {
         var $this = $(this),
-            decorationSrc = $this.attr('src'),
-            decoration = new Decoration(context, decorationSrc, 0);
+            decorationSrc = $this.attr('src');
 
-        addOneToDecorationList(decoration);
+        addOneToDecorationList(decorationSrc);
         drawBracelet();
     });
 
-    $('#canvas').on('click', function (event) {
+    $('#canvas').on('click',function (event) {
         var position = getMousePosition(canvas, event),
             mouseX = parseInt(position.x),
             mouseY = parseInt(position.y);
@@ -372,28 +448,28 @@ $(function () {
 
         drawBracelet();
     }).on('mousemove', function (event) {
-        var angle,
-            position,
-            mouseX,
-            mouseY;
+            var angle,
+                position,
+                mouseX,
+                mouseY;
 
-        if (!isDragging) {
-            return;
-        }
-
-        position = getMousePosition(canvas, event);
-        mouseX = parseInt(position.x);
-        mouseY = parseInt(position.y);
-
-        $.each(decorationsList, function (index, decoration) {
-            if (decoration.dragging) {
-                angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
-                decoration.setAngle(angle);
-                drawBracelet();
-                return false;
+            if (!isDragging) {
+                return;
             }
+
+            position = getMousePosition(canvas, event);
+            mouseX = parseInt(position.x);
+            mouseY = parseInt(position.y);
+
+            $.each(decorationsList, function (index, decoration) {
+                if (decoration.dragging) {
+                    angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
+                    decoration.setAngle(angle);
+                    drawBracelet();
+                    return false;
+                }
+            });
         });
-    });
 
     drawBracelet();
 });
