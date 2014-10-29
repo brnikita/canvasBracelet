@@ -71,19 +71,37 @@ $(function () {
      * @function
      * @name addOneToDecorationList
      * @param {string} decorationSrc
+     * @param {number} angle
      * @returns {undefined}
      */
-    function addOneToDecorationList(decorationSrc) {
+    function addOneToDecorationList(decorationSrc, angle) {
         var decoration;
 
         $.each(decorationsList, function (index, decoration) {
-            if (decoration.angle === 0) {
-                decoration.setAngle(0.1);
+            if (decoration.angle === angle) {
+                decoration.setAngle(angle + 0.1);
             }
         });
 
-        decoration = new Decoration(context, decorationSrc, 0);
+        decoration = new Decoration(context, decorationSrc, angle);
         decorationsList.push(decoration);
+    }
+
+    /**
+     * Function returns correct angle inside 2Pi
+     *
+     * @function
+     * @name Decoration#getCorrectAngle
+     * @returns {number}
+     */
+    function getCorrectAngle(angle) {
+        angle = angle % (2 * Math.PI);
+
+        if (angle >= 0) {
+            return angle;
+        }
+
+        return 2 * Math.PI - angle;
     }
 
     /**
@@ -143,6 +161,24 @@ $(function () {
     Decoration.prototype.setDraggable = function (dragging) {
         this.dragging = dragging;
         isDragging = dragging;
+    };
+
+    /**
+     * Method returns true if angle is inside decoration sector
+     *
+     * @method
+     * @name Decoration#isAngleInside
+     * @param {number} angle
+     * @returns {boolean}
+     */
+    Decoration.prototype.isAngleInside = function (angle) {
+        var startAngle = this.getStartAngle(),
+            endAngle = this.getEndAngle(),
+            decorationSectorAngle = this.getAnglesDiff(startAngle, endAngle),
+            endAngleDiff = this.getAnglesDiff(angle, endAngle),
+            startAngleDiff = this.getAnglesDiff(startAngle, angle);
+
+        return decorationSectorAngle === endAngleDiff + startAngleDiff;
     };
 
     /**
@@ -283,6 +319,9 @@ $(function () {
      * @returns {number}
      */
     Decoration.prototype.getAnglesDiff = function (previousAngle, nextAngle) {
+        previousAngle = getCorrectAngle(previousAngle);
+        nextAngle = getCorrectAngle(nextAngle);
+
         if (previousAngle > nextAngle) {
             return nextAngle + 2 * Math.PI - previousAngle;
         }
@@ -295,13 +334,15 @@ $(function () {
      *
      * @method
      * @name Decoration#getPrevious
+     * @param {boolean} [revertAngles] true if we need to find nextDecoration
      * @returns {Decoration | null}
      */
-    Decoration.prototype.getPrevious = function () {
+    Decoration.prototype.getPrevious = function (revertAngles) {
         var that = this,
             currentAngle = this.angle,
-            previousDecoration,
-            maxAngleDecoration;
+            minAnglesDiff = 2 * Math.PI,
+            getAnglesDiff = this.getAnglesDiff,
+            previousDecoration;
 
         if (decorationsList.length === 0) {
             return null;
@@ -313,33 +354,24 @@ $(function () {
             }
         }
 
-        maxAngleDecoration = decorationsList[0];
         $.each(decorationsList, function (index, decoration) {
-            var previousAngle,
-                maxAngle = maxAngleDecoration.angle,
-                angle = decoration.angle;
+            var angle,
+                anglesDiff;
 
             if (decoration === that) {
                 return;
             }
 
-            if (angle < currentAngle) {
-                if (previousDecoration) {
-                    previousAngle = previousDecoration.angle;
-                    if (previousAngle > angle) {
-                        previousDecoration = decoration;
-                    }
-                } else {
-                    previousDecoration = decoration;
-                }
-            }
+            angle = decoration.angle;
+            anglesDiff = revertAngles ? getAnglesDiff(currentAngle, angle) : getAnglesDiff(angle, currentAngle);
 
-            if (angle > maxAngle) {
-                maxAngleDecoration = decoration;
+            if (anglesDiff < minAnglesDiff) {
+                minAnglesDiff = anglesDiff;
+                previousDecoration = decoration;
             }
         });
 
-        return previousDecoration || maxAngleDecoration;
+        return previousDecoration;
     };
 
     /**
@@ -350,48 +382,7 @@ $(function () {
      * @returns {Decoration | null}
      */
     Decoration.prototype.getNext = function () {
-        var that = this,
-            currentAngle = this.angle,
-            nextDecoration,
-            minAngleDecoration;
-
-        if (decorationsList.length === 0) {
-            return null;
-        }
-
-        if (decorationsList.length === 1) {
-            if (this === decorationsList[0]) {
-                return null;
-            }
-        }
-
-        minAngleDecoration = decorationsList[0];
-        $.each(decorationsList, function (index, decoration) {
-            var nextAngle,
-                minAngle = minAngleDecoration.angle,
-                angle = decoration.angle;
-
-            if (decoration === that) {
-                return;
-            }
-
-            if (angle > currentAngle) {
-                if (nextDecoration) {
-                    nextAngle = nextDecoration.angle;
-                    if (nextAngle < angle) {
-                        nextDecoration = decoration;
-                    }
-                } else {
-                    nextDecoration = decoration;
-                }
-            }
-
-            if (angle < minAngle) {
-                minAngleDecoration = decoration;
-            }
-        });
-
-        return nextDecoration || minAngleDecoration;
+        return this.getPrevious(true);
     };
 
     /**
@@ -403,21 +394,33 @@ $(function () {
      * @returns {undefined}
      */
     Decoration.prototype.setAngle = function (angle) {
-        var previousDecoration,
+        var moveAngle,
+            previousDecoration,
             nextDecoration,
             nextDecorationStartAngle,
             previousDecorationEndAngle,
             startAngle,
             endAngle;
 
-        this.angle = angle < 2 * Math.PI ? angle : 2 * Math.PI - angle;
+        this.angle = getCorrectAngle(angle);
         previousDecoration = this.getPrevious();
         nextDecoration = this.getNext();
+
         if (previousDecoration && nextDecoration) {
             previousDecorationEndAngle = previousDecoration.getEndAngle();
             nextDecorationStartAngle = nextDecoration.getStartAngle();
             startAngle = this.getStartAngle();
             endAngle = this.getEndAngle();
+
+            if (this.isAngleInside(nextDecorationStartAngle)) {
+                moveAngle = this.getAnglesDiff(nextDecorationStartAngle, endAngle);
+                nextDecoration.setAngle(nextDecoration.angle + moveAngle + 0.001);
+            }
+
+            if (this.isAngleInside(previousDecorationEndAngle)) {
+                moveAngle = this.getAnglesDiff(startAngle, previousDecorationEndAngle);
+                previousDecoration.setAngle(previousDecoration.angle - moveAngle - 0.001);
+            }
         }
     };
 
@@ -426,7 +429,7 @@ $(function () {
         var $this = $(this),
             decorationSrc = $this.attr('src');
 
-        addOneToDecorationList(decorationSrc);
+        addOneToDecorationList(decorationSrc, 0);
         drawBracelet();
     });
 
