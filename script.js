@@ -77,16 +77,9 @@ $(function () {
     function addOneToDecorationList(decorationSrc, angle) {
         var circleLength = 2 * Math.PI * circleRadius,
             decorationsLength = 0,
-            decoration;
+            newsDecoration = new Decoration(context, decorationSrc, angle);
 
-        $.each(decorationsList, function (index, decoration) {
-            if (decoration.angle === angle) {
-                decoration.setAngle(angle + 0.1);
-            }
-        });
-
-        decoration = new Decoration(context, decorationSrc, angle);
-        decorationsLength += 2 * decoration.getRadius();
+        decorationsLength += 2 * newsDecoration.getRadius();
         $.each(decorationsList, function (index, decoration) {
             decorationsLength += 2 * decoration.getRadius();
         });
@@ -96,7 +89,13 @@ $(function () {
             return;
         }
 
-        decorationsList.push(decoration);
+        $.each(decorationsList, function (index, decoration) {
+            if (decoration.angle === angle) {
+                decoration.setAngle(angle + 0.1);
+            }
+        });
+
+        decorationsList.push(newsDecoration);
     }
 
     /**
@@ -179,18 +178,20 @@ $(function () {
      * Method returns true if angle is inside decoration sector
      *
      * @method
-     * @name Decoration#isAngleInside
-     * @param {number} angle
+     * @name Decoration#isDecorationsIntersect
+     * @param {Decoration} decoration1
+     * @param {Decoration} decoration2
      * @returns {boolean}
      */
-    Decoration.prototype.isAngleInside = function (angle) {
-        var startAngle = this.getStartAngle(),
-            endAngle = this.getEndAngle(),
-            decorationSectorAngle = this.getAnglesDiff(startAngle, endAngle),
-            endAngleDiff = this.getAnglesDiff(angle, endAngle),
-            startAngleDiff = this.getAnglesDiff(startAngle, angle);
+    Decoration.prototype.isDecorationsIntersect = function (decoration1, decoration2) {
+        var x1 = decoration1.getCenterX(),
+            x2 = decoration1.getCenterX(),
+            y1 = decoration2.getCenterY(),
+            y2 = decoration2.getCenterY(),
+            radius1 = decoration1.getRadius(),
+            radius2 = decoration2.getRadius();
 
-        return decorationSectorAngle.toFixed(3) === (endAngleDiff + startAngleDiff).toFixed(3);
+        return Math.sqrt(Math.pow((x1- x2), 2) + Math.pow((y1 - y2), 2)) < radius1 + radius2;
     };
 
     /**
@@ -422,16 +423,19 @@ $(function () {
             startAngle = this.getStartAngle();
             endAngle = this.getEndAngle();
 
-            if (this.isAngleInside(nextDecorationStartAngle)) {
+            if (this.isDecorationsIntersect(nextDecoration, this)) {
                 moveAngle = this.getAnglesDiff(nextDecorationStartAngle, endAngle);
                 nextDecoration.setAngle(nextDecoration.angle + moveAngle + 0.001);
+                console.log(nextDecoration.angle + moveAngle + 0.001);
             }
 
-            if (this.isAngleInside(previousDecorationEndAngle)) {
+            if (this.isDecorationsIntersect(previousDecoration, this)) {
                 moveAngle = this.getAnglesDiff(startAngle, previousDecorationEndAngle);
                 previousDecoration.setAngle(previousDecoration.angle - moveAngle - 0.001);
+                console.log(previousDecoration.angle - moveAngle - 0.001);
             }
         }
+        console.log(decorationsList);
     };
 
 
