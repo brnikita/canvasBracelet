@@ -436,13 +436,16 @@ $(function () {
             startAngle = this.getStartAngle();
             endAngle = this.getEndAngle();
 
+            console.log(0);
             if (this.isByClockwise(oldAngle, angle)) {
                 if (this.isDecorationsIntersect(nextDecoration, this)) {
+                    console.log(1);
                     moveAngle = this.getAnglesDiff(nextDecorationStartAngle, endAngle);
                     nextDecoration.setAngle(nextDecoration.angle + moveAngle);
                 }
             } else {
                 if (this.isDecorationsIntersect(previousDecoration, this)) {
+                    console.log(2);
                     moveAngle = this.getAnglesDiff(startAngle, previousDecorationEndAngle);
                     previousDecoration.setAngle(previousDecoration.angle - moveAngle);
                 }
