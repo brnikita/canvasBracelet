@@ -5,6 +5,7 @@ $(function () {
         circleCenterY = canvas.height / 2,
         circleRadius = 100,
         isDragging = false,
+        isSelecting = false,
         decorationsList = [],
     //Decoration class
         Decoration;
@@ -129,7 +130,7 @@ $(function () {
         this.context = context;
         this.image.src = src;
         this.setAngle(angle);
-        this.setDraggable(false);
+        this.setSelecting(false);
     };
 
     /**
@@ -152,7 +153,7 @@ $(function () {
         context.rotate(rotateAngle);
         context.translate(-centerX, -centerY);
         context.drawImage(image, centerX - width / 2, centerY - height / 2, width, height);
-        if (this.dragging) {
+        if (this.selecting) {
             context.strokeStyle = '#000';
             context.strokeRect(centerX - width / 2, centerY - height / 2, width, height);
         }
@@ -162,16 +163,16 @@ $(function () {
     };
 
     /**
-     * Method makes decoration draggable or not
+     * Method makes decoration selecting or not
      *
      * @method
-     * @name Decoration#setDraggable
-     * @param {boolean} dragging True if decoration should be draggable
+     * @name Decoration#setSelecting
+     * @param {boolean} selecting True if decoration should be selecting
      * @returns {undefined}
      */
-    Decoration.prototype.setDraggable = function (dragging) {
-        this.dragging = dragging;
-        isDragging = dragging;
+    Decoration.prototype.setSelecting = function (selecting) {
+        this.selecting = selecting;
+        isSelecting = selecting;
     };
 
     /**
@@ -436,7 +437,7 @@ $(function () {
             isByClockwise = this.isByClockwise(oldAngle, angle),
             anglesDiff;
 
-        if(isByClockwise){
+        if (isByClockwise) {
             anglesDiff = this.getAnglesDiffByClockWise(oldAngle, angle);
         } else {
             anglesDiff = this.getAnglesDiffByCounterclockwise(oldAngle, angle);
@@ -508,47 +509,53 @@ $(function () {
         drawBracelet();
     });
 
-    $('#canvas').on('click',function (event) {
-        var position = getMousePosition(canvas, event),
-            mouseX = parseInt(position.x),
-            mouseY = parseInt(position.y);
+    $('#canvas').on('mousemove',function (event) {
+        var angle,
+            position,
+            mouseX,
+            mouseY;
 
-        $.each(decorationsList, function (index, decoration) {
-            if (decoration.dragging) {
-                decoration.setDraggable(false);
-                return;
-            }
-
-            if (decoration.isPointInside(mouseX, mouseY)) {
-                decoration.setDraggable(true);
-            }
-        });
-
-        drawBracelet();
-    }).on('mousemove', function (event) {
-            var angle,
-                position,
-                mouseX,
-                mouseY;
-
-            if (!isDragging) {
-                return;
-            }
-
+        if (isSelecting) {
             position = getMousePosition(canvas, event);
             mouseX = parseInt(position.x);
             mouseY = parseInt(position.y);
 
             $.each(decorationsList, function (index, decoration) {
-                if (decoration.dragging) {
-                    angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
-                    decoration.setAngle(angle);
-                    drawBracelet();
+                if (decoration.selecting) {
+                    if (isDragging) {
+
+
+                    } else {
+                        angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
+                        decoration.setAngle(angle);
+                        drawBracelet();
+                    }
                     return false;
                 }
             });
+        }
+    }).on('mousedown',function () {
+            isDragging = true;
+
+            var position = getMousePosition(canvas, event),
+                mouseX = parseInt(position.x),
+                mouseY = parseInt(position.y);
+
+            $.each(decorationsList, function (index, decoration) {
+                if (decoration.selecting) {
+                    decoration.setSelecting(false);
+                    return;
+                }
+
+                if (decoration.isPointInside(mouseX, mouseY)) {
+                    decoration.setSelecting(true);
+                }
+            });
+
+            drawBracelet();
+        }).on('mouseup', function () {
+            isDragging = false;
         });
 
     drawBracelet();
-})
-;
+});
