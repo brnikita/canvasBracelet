@@ -327,27 +327,39 @@ $(function () {
         var startAngle = this.getStartAngle(),
             endAngle = this.getEndAngle();
 
-        return this.getAnglesDiff(startAngle, endAngle);
+        return this.getAnglesDiffByClockWise(startAngle, endAngle);
     };
 
     /**
      * Method returns diff between 2 angles by clockwise
      *
      * @method
-     * @name Decoration#getAnglesDiff
+     * @name Decoration#getAnglesDiffByClockWise
      * @param {number} previousAngle
      * @param {number} nextAngle
      * @returns {number}
      */
-    Decoration.prototype.getAnglesDiff = function (previousAngle, nextAngle) {
+    Decoration.prototype.getAnglesDiffByClockWise = function (previousAngle, nextAngle) {
         previousAngle = getCorrectAngle(previousAngle);
         nextAngle = getCorrectAngle(nextAngle);
 
-        if (previousAngle > nextAngle) {
-            return getCorrectAngle(nextAngle + 2 * Math.PI - previousAngle);
-        }
-
         return getCorrectAngle(nextAngle - previousAngle);
+    };
+
+    /**
+     * Method returns diff between 2 angles by сounterclockwise
+     *
+     * @method
+     * @name Decoration#getAnglesDiffByCounterclockwise
+     * @param {number} previousAngle
+     * @param {number} nextAngle
+     * @returns {number}
+     */
+    Decoration.prototype.getAnglesDiffByCounterclockwise = function (previousAngle, nextAngle) {
+        previousAngle = getCorrectAngle(previousAngle);
+        nextAngle = getCorrectAngle(nextAngle);
+
+        return getCorrectAngle(previousAngle - nextAngle);
     };
 
     /**
@@ -362,7 +374,7 @@ $(function () {
         var that = this,
             currentAngle = this.angle,
             minAnglesDiff = 2 * Math.PI,
-            getAnglesDiff = this.getAnglesDiff,
+            getAnglesDiffByClockWise = this.getAnglesDiffByClockWise,
             previousDecoration = null;
 
         $.each(decorationsList, function (index, decoration) {
@@ -374,7 +386,7 @@ $(function () {
             }
 
             angle = decoration.angle;
-            anglesDiff = revertAngles ? getAnglesDiff(currentAngle, angle) : getAnglesDiff(angle, currentAngle);
+            anglesDiff = revertAngles ? getAnglesDiffByClockWise(currentAngle, angle) : getAnglesDiffByClockWise(angle, currentAngle);
 
             if (anglesDiff < minAnglesDiff) {
                 minAnglesDiff = anglesDiff;
@@ -405,7 +417,7 @@ $(function () {
      * @returns {boolean}
      */
     Decoration.prototype.isByClockwise = function (previousAngle, nextAngle) {
-        return this.getAnglesDiff(previousAngle, nextAngle) < this.getAnglesDiff(nextAngle, previousAngle);
+        return this.getAnglesDiffByClockWise(previousAngle, nextAngle) < this.getAnglesDiffByClockWise(nextAngle, previousAngle);
     };
 
     /**
@@ -413,17 +425,52 @@ $(function () {
      *
      * @method
      * @name Decoration#setAngle
-     * @param {number} angle
+     * @param angle
      * @returns {undefined}
      */
     Decoration.prototype.setAngle = function (angle) {
+        angle = getCorrectAngle(angle);
+
+        var oldAngle = this.angle || 0,
+            angleIncrease = 0.1,
+            isByClockwise = this.isByClockwise(oldAngle, angle),
+            anglesDiff;
+
+        if(isByClockwise){
+            anglesDiff = this.getAnglesDiffByClockWise(oldAngle, angle);
+        } else {
+            anglesDiff = this.getAnglesDiffByCounterclockwise(oldAngle, angle);
+        }
+
+        if (anglesDiff > angleIncrease) {
+            if (isByClockwise) {
+                this._setAngle(oldAngle + angleIncrease);
+            } else {
+                this._setAngle(oldAngle - angleIncrease);
+            }
+            this.setAngle(angle);
+        } else {
+            this._setAngle(angle);
+        }
+    };
+
+    /**
+     * Method sets angle of decoration
+     *
+     * @private
+     * @method
+     * @name Decoration#_setAngle
+     * @param {number} angle
+     * @returns {undefined}
+     */
+    Decoration.prototype._setAngle = function (angle) {
         var moveAngle,
             previousDecoration,
             nextDecoration,
             nextDecorationStartAngle,
             previousDecorationEndAngle,
             startAngle,
-            oldAngle = this.angle,
+            oldAngle = this.angle || 0,
             endAngle;
 
         this.angle = getCorrectAngle(angle);
@@ -439,17 +486,14 @@ $(function () {
         startAngle = this.getStartAngle();
         endAngle = this.getEndAngle();
 
-        console.log(0);
         if (this.isByClockwise(oldAngle, angle)) {
             if (this.isDecorationsIntersect(nextDecoration, this)) {
-                console.log(1);
-                moveAngle = this.getAnglesDiff(nextDecorationStartAngle, endAngle);
+                moveAngle = this.getAnglesDiffByClockWise(nextDecorationStartAngle, endAngle);
                 nextDecoration.setAngle(nextDecoration.angle + moveAngle);
             }
         } else {
             if (this.isDecorationsIntersect(previousDecoration, this)) {
-                console.log(2);
-                moveAngle = this.getAnglesDiff(startAngle, previousDecorationEndAngle);
+                moveAngle = this.getAnglesDiffByClockWise(startAngle, previousDecorationEndAngle);
                 previousDecoration.setAngle(previousDecoration.angle - moveAngle);
             }
         }
@@ -464,7 +508,7 @@ $(function () {
         drawBracelet();
     });
 
-    $('#canvas').on('click', function (event) {
+    $('#canvas').on('click',function (event) {
         var position = getMousePosition(canvas, event),
             mouseX = parseInt(position.x),
             mouseY = parseInt(position.y);
@@ -482,28 +526,29 @@ $(function () {
 
         drawBracelet();
     }).on('mousemove', function (event) {
-        var angle,
-            position,
-            mouseX,
-            mouseY;
+            var angle,
+                position,
+                mouseX,
+                mouseY;
 
-        if (!isDragging) {
-            return;
-        }
-
-        position = getMousePosition(canvas, event);
-        mouseX = parseInt(position.x);
-        mouseY = parseInt(position.y);
-
-        $.each(decorationsList, function (index, decoration) {
-            if (decoration.dragging) {
-                angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
-                decoration.setAngle(angle);
-                drawBracelet();
-                return false;
+            if (!isDragging) {
+                return;
             }
+
+            position = getMousePosition(canvas, event);
+            mouseX = parseInt(position.x);
+            mouseY = parseInt(position.y);
+
+            $.each(decorationsList, function (index, decoration) {
+                if (decoration.dragging) {
+                    angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
+                    decoration.setAngle(angle);
+                    drawBracelet();
+                    return false;
+                }
+            });
         });
-    });
 
     drawBracelet();
-});
+})
+;
