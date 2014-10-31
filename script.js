@@ -90,12 +90,6 @@ $(function () {
             return;
         }
 
-        $.each(decorationsList, function (index, decoration) {
-            if (decoration.angle === angle) {
-                decoration.setAngle(angle);
-            }
-        });
-
         decorationsList.push(newsDecoration);
     }
 
@@ -445,34 +439,74 @@ $(function () {
 
         if (anglesDiff > angleIncrease) {
             if (isByClockwise) {
-                this._setAngle(oldAngle + angleIncrease);
+                this.moveDecoration(oldAngle + angleIncrease);
             } else {
-                this._setAngle(oldAngle - angleIncrease);
+                this.moveDecoration(oldAngle - angleIncrease);
             }
             this.setAngle(angle);
         } else {
-            this._setAngle(angle);
+            this.moveDecoration(angle);
+        }
+    };
+
+    /**
+     * Method moves next decoration
+     *
+     * @method
+     * @name Decoration#moveDecoration
+     * @returns {undefined}
+     */
+    Decoration.prototype.moveNext = function () {
+        var moveAngle,
+            nextDecoration = this.getNext(),
+            nextDecorationStartAngle,
+            endAngle;
+
+        if (this.isDecorationsIntersect(nextDecoration, this)) {
+            nextDecorationStartAngle = nextDecoration.getStartAngle();
+            endAngle = this.getEndAngle();
+            moveAngle = this.getAnglesDiffByClockWise(nextDecorationStartAngle, endAngle);
+            nextDecoration.setAngle(nextDecoration.angle + moveAngle);
+        }
+    };
+
+    /**
+     * Method moves previous decoration
+     *
+     * @method
+     * @name Decoration#movePrevious
+     * @returns {undefined}
+     */
+    Decoration.prototype.movePrevious = function () {
+        var moveAngle,
+            previousDecoration = this.getPrevious(),
+            previousDecorationEndAngle,
+            startAngle;
+
+        if (this.isDecorationsIntersect(previousDecoration, this)) {
+            previousDecorationEndAngle = previousDecoration.getEndAngle();
+            startAngle = this.getStartAngle();
+            moveAngle = this.getAnglesDiffByCounterclockwise(previousDecorationEndAngle, startAngle);
+            previousDecoration.setAngle(previousDecoration.angle - moveAngle);
         }
     };
 
     /**
      * Method sets angle of decoration
      *
-     * @private
      * @method
-     * @name Decoration#_setAngle
+     * @name Decoration#moveDecoration
      * @param {number} angle
      * @returns {undefined}
      */
-    Decoration.prototype._setAngle = function (angle) {
-        var moveAngle,
-            previousDecoration,
+    Decoration.prototype.moveDecoration = function (angle) {
+        var previousDecoration,
             nextDecoration,
-            nextDecorationStartAngle,
-            previousDecorationEndAngle,
-            startAngle,
-            oldAngle = this.angle || 0,
-            endAngle;
+            oldAngle = this.angle;
+
+        if ($.type(oldAngle) === 'undefined') {
+            oldAngle = angle;
+        }
 
         this.angle = getCorrectAngle(angle);
         previousDecoration = this.getPrevious();
@@ -482,22 +516,14 @@ $(function () {
             return;
         }
 
-        previousDecorationEndAngle = previousDecoration.getEndAngle();
-        nextDecorationStartAngle = nextDecoration.getStartAngle();
-        startAngle = this.getStartAngle();
-        endAngle = this.getEndAngle();
-
         if (this.isByClockwise(oldAngle, angle)) {
-            if (this.isDecorationsIntersect(nextDecoration, this)) {
-                moveAngle = this.getAnglesDiffByClockWise(nextDecorationStartAngle, endAngle);
-                nextDecoration.setAngle(nextDecoration.angle + moveAngle);
-            }
+            this.moveNext();
+            this.movePrevious();
         } else {
-            if (this.isDecorationsIntersect(previousDecoration, this)) {
-                moveAngle = this.getAnglesDiffByClockWise(startAngle, previousDecorationEndAngle);
-                previousDecoration.setAngle(previousDecoration.angle - moveAngle);
-            }
+            this.movePrevious();
+            this.moveNext();
         }
+
     };
 
 
