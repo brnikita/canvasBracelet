@@ -4,8 +4,8 @@ $(function () {
         circleCenterX = canvas.width / 2,
         circleCenterY = canvas.height / 2,
         circleRadius = 100,
-        isDragging = false,
         isSelecting = false,
+        draggingElement,
         decorationsList = [],
     //Decoration class
         Decoration;
@@ -64,6 +64,10 @@ $(function () {
         $.each(decorationsList, function (index, decoration) {
             decoration.draw();
         });
+
+        if (draggingElement) {
+            draggingElement.draw();
+        }
     }
 
     /**
@@ -91,6 +95,19 @@ $(function () {
         }
 
         decorationsList.push(newsDecoration);
+    }
+
+    /**
+     * Function returns angle by x,y coordinates
+     *
+     * @function
+     * @name getCircleAngle
+     * @param {number} x
+     * @param {number} y
+     * @returns {number}
+     */
+    function getCircleAngle(x, y) {
+        return Math.atan2(circleCenterY - y, circleCenterX - x) + Math.PI;
     }
 
     /**
@@ -128,6 +145,52 @@ $(function () {
     };
 
     /**
+     * Method changes decoration behavior
+     *
+     * @method
+     * @name Decoration#setDragging
+     * @param {boolean} dragging
+     * @returns {undefined}
+     */
+    Decoration.prototype.setDragging = function (dragging) {
+        var that = this,
+            angle,
+            newsDecoration,
+            newDecorationsList = [];
+
+        if (dragging) {
+            draggingElement = this;
+            $.each(decorationsList, function (index, decoration) {
+                if (decoration !== that) {
+                    newDecorationsList.push(decoration);
+                }
+            });
+            decorationsList = newDecorationsList;
+            return;
+        }
+
+        angle = getCircleAngle(draggingElement.draggingX, draggingElement.draggingY);
+        newsDecoration = new Decoration(context, draggingElement.image.src, angle);
+        newsDecoration.setSelecting(true);
+        decorationsList.push(newsDecoration);
+        draggingElement = null;
+    };
+
+    /**
+     * Method sets dragging position
+     *
+     * @method
+     * @name Decoration#setDraggingPosition
+     * @param {number} x
+     * @param {number} y
+     * @returns {undefined}
+     */
+    Decoration.prototype.setDraggingPosition = function (x, y) {
+        this.draggingX = x;
+        this.draggingY = y;
+    };
+
+    /**
      * Method draws decoration on the circle
      *
      * @method
@@ -147,6 +210,7 @@ $(function () {
         context.rotate(rotateAngle);
         context.translate(-centerX, -centerY);
         context.drawImage(image, centerX - width / 2, centerY - height / 2, width, height);
+
         if (this.selecting) {
             context.strokeStyle = '#000';
             context.strokeRect(centerX - width / 2, centerY - height / 2, width, height);
@@ -165,6 +229,9 @@ $(function () {
      * @returns {undefined}
      */
     Decoration.prototype.setSelecting = function (selecting) {
+        if (this.selecting === selecting) {
+            return;
+        }
         this.selecting = selecting;
         isSelecting = selecting;
     };
@@ -256,6 +323,9 @@ $(function () {
      * @returns {number}
      */
     Decoration.prototype.getCenterX = function () {
+        if (this.draggingX) {
+            return this.draggingX;
+        }
         return circleCenterX + (Math.cos(this.angle) * circleRadius);
     };
 
@@ -267,6 +337,9 @@ $(function () {
      * @returns {number}
      */
     Decoration.prototype.getCenterY = function () {
+        if (this.draggingY) {
+            return this.draggingY;
+        }
         return circleCenterY + (Math.sin(this.angle) * circleRadius);
     };
 
@@ -424,12 +497,18 @@ $(function () {
      * @returns {undefined}
      */
     Decoration.prototype.setAngle = function (angle) {
+        var oldAngle = this.angle,
+            angleIncrease = 0.1,
+            isByClockwise,
+            anglesDiff;
+
         angle = getCorrectAngle(angle);
 
-        var oldAngle = this.angle || 0,
-            angleIncrease = 0.1,
-            isByClockwise = this.isByClockwise(oldAngle, angle),
-            anglesDiff;
+        if ($.type(oldAngle) === 'undefined') {
+            oldAngle = angle;
+        }
+
+        isByClockwise = this.isByClockwise(oldAngle, angle);
 
         if (isByClockwise) {
             anglesDiff = this.getAnglesDiffByClockWise(oldAngle, angle);
@@ -537,32 +616,28 @@ $(function () {
 
     $('#canvas').on('mousemove',function (event) {
         var angle,
-            position,
-            mouseX,
-            mouseY;
-
-        if (isSelecting) {
-            position = getMousePosition(canvas, event);
-            mouseX = parseInt(position.x);
+            position = getMousePosition(canvas, event),
+            mouseX = parseInt(position.x),
             mouseY = parseInt(position.y);
 
+        if (draggingElement) {
+            draggingElement.setDraggingPosition(mouseX, mouseY);
+            drawBracelet();
+            return;
+        }
+
+        if (isSelecting) {
             $.each(decorationsList, function (index, decoration) {
                 if (decoration.selecting) {
-                    if (isDragging) {
-
-
-                    } else {
-                        angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
-                        decoration.setAngle(angle);
-                        drawBracelet();
-                    }
+                    angle = Math.atan2(circleCenterY - mouseY, circleCenterX - mouseX) + Math.PI;
+                    decoration.setAngle(angle);
                     return false;
                 }
+                return true;
             });
+            drawBracelet();
         }
     }).on('mousedown',function () {
-            isDragging = true;
-
             var position = getMousePosition(canvas, event),
                 mouseX = parseInt(position.x),
                 mouseY = parseInt(position.y);
@@ -574,13 +649,17 @@ $(function () {
                 }
 
                 if (decoration.isPointInside(mouseX, mouseY)) {
+                    decoration.setDragging(true);
                     decoration.setSelecting(true);
                 }
             });
 
             drawBracelet();
         }).on('mouseup', function () {
-            isDragging = false;
+            if (draggingElement) {
+                draggingElement.setDragging(false);
+            }
+            drawBracelet();
         });
 
     drawBracelet();
