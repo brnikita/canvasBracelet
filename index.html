@@ -19,7 +19,25 @@
         'images/crystal_006.png'
     ];
 </script>
+<button class="js-get-decorations-data">Get decorations data</button>
+<button class="js-set-decorations">Set decorations</button>
 </body>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="script.js"></script>
+<script>
+    $('.js-set-decorations').on('click', function () {
+        window.setDecorationsData(
+                [
+                    {
+                        src: 'images/pewter_round_004.png',
+                        angle: 0
+                    },
+                    {
+                        src: 'images/crystal_005.png',
+                        angle: 0
+                    }
+                ]
+        );
+    });
+</script>
 </html>

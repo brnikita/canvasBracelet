@@ -46,6 +46,50 @@ $(function () {
     }
 
     /**
+     * Function returns decorations data
+     *
+     * @function
+     * @name getDecorationsData
+     * @returns {Array | null}
+     */
+    function getDecorationsData() {
+        var decorationsData = [];
+
+        $.each(decorationsList, function (index, decoration) {
+            decorationsData.push({
+                src: decoration.image.src,
+                angle: decoration.angle
+            });
+        });
+
+        if (decorationsData.length) {
+            return decorationsData;
+        }
+
+        return null;
+    }
+
+    /**
+     * Function sets decorations list
+     *
+     * @function
+     * @name setDecorationsData
+     * @param {Array} newDecorationsList
+     * @returns {Array | null}
+     */
+    function setDecorationsData(newDecorationsList) {
+        isSelecting = false;
+        draggingElement = null;
+        decorationsList = [];
+
+        $.each(newDecorationsList, function (index, decoration) {
+            addOneToDecorationList(decoration.src, decoration.angle);
+        });
+
+        drawBracelet();
+    }
+
+    /**
      * Function fills initial decorations list
      *
      * @function
@@ -894,8 +938,14 @@ $(function () {
         drawBracelet();
     });
 
+    $('.js-get-decorations-data').on('click', function () {
+        console.log(getDecorationsData());
+    });
+
     preLoadDecorations(window.decorations).done(function () {
         fillInitDecorationList(window.decorations);
         drawBracelet();
     });
+
+    window.setDecorationsData = setDecorationsData;
 });
