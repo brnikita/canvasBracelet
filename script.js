@@ -21,31 +21,47 @@ $(function () {
      * Function fills initial decorations list
      *
      * @function
-     * @name fillInitDecorationList
+     * @name preLoadDecorations
      * @param {Array} decorationsList
      * @returns {$.Deferred}
      */
-    function fillInitDecorationList(decorationsList) {
+    function preLoadDecorations(decorationsList) {
         var loadedDecorations = 0,
             deferred = $.Deferred();
 
+        $.each(decorationsList, function (index, decorationSrc) {
+            var image = new Image();
+
+            image.src = decorationSrc;
+            image.onload = function () {
+                loadedDecorations++;
+
+                if (loadedDecorations === decorationsList.length) {
+                    deferred.resolve();
+                }
+            }
+        });
+
+        return deferred;
+    }
+
+    /**
+     * Function fills initial decorations list
+     *
+     * @function
+     * @name fillInitDecorationList
+     * @param {Array} decorationsList
+     * @returns {undefined}
+     */
+    function fillInitDecorationList(decorationsList) {
         $.each(decorationsList, function (index, decorationSrc) {
             var image = new Image(),
                 newInitialDecoration;
 
             image.src = decorationSrc;
-            image.onload = function () {
-                loadedDecorations++;
-                newInitialDecoration = new InitDecoration(decorationSrc, index);
-                initDecorationsList.push(newInitialDecoration);
-
-                if (loadedDecorations === decorationsList.length) {
-                    deferred.resolve();
-                }
-            };
+            newInitialDecoration = new InitDecoration(decorationSrc, index);
+            initDecorationsList.push(newInitialDecoration);
         });
-
-        return deferred;
     }
 
     /**
@@ -366,7 +382,7 @@ $(function () {
             return;
         }
 
-        angle = getCircleAngle(draggingElement.draggingX, draggingElement.draggingY);
+        angle = getCircleAngle(draggingElement.getCenterX(), draggingElement.getCenterY());
         newsDecoration = new Decoration(context, draggingElement.image.src, angle);
         newsDecoration.setSelecting(true);
         decorationsList.push(newsDecoration);
@@ -802,7 +818,23 @@ $(function () {
 
     };
 
-    $('#canvas').on('mousemove', function (event) {
+    $('#canvas').on('dblclick', function (event) {
+        var newDecorationsList = [],
+            position = getMousePosition(canvas, event),
+            mouseX = parseInt(position.x),
+            mouseY = parseInt(position.y);
+
+        $.each(decorationsList, function (index, decoration) {
+            if (decoration.isPointInside(mouseX, mouseY)) {
+                decoration.setSelecting(false);
+                return;
+            }
+            newDecorationsList.push(decoration);
+        });
+
+        decorationsList = newDecorationsList;
+        drawBracelet();
+    }).on('mousemove', function (event) {
         var angle,
             position = getMousePosition(canvas, event),
             mouseX = parseInt(position.x),
@@ -823,9 +855,10 @@ $(function () {
                 }
                 return true;
             });
+
             drawBracelet();
         }
-    }).on('mousedown', function () {
+    }).on('mousedown', function (event) {
         var position = getMousePosition(canvas, event),
             mouseX = parseInt(position.x),
             mouseY = parseInt(position.y);
@@ -857,8 +890,12 @@ $(function () {
         if (draggingElement) {
             draggingElement.setDragging(false);
         }
+
         drawBracelet();
     });
 
-    fillInitDecorationList(window.decorations).done(drawBracelet);
+    preLoadDecorations(window.decorations).done(function () {
+        fillInitDecorationList(window.decorations);
+        drawBracelet();
+    });
 });
