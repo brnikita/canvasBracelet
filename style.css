@@ -1,3 +1,23 @@
 #canvas {
-    border:1px solid red;
+    border: 1px solid red;
+    position: absolute;
+    z-index: 1;
+    background: #fff;
+}
+
+.decorations-wrapper {
+    position: relative;
+}
+
+.decorations {
+    position: absolute;
+    z-index: 0;
+}
+
+.decorations input {
+    margin-right: 12px;
+}
+
+.decorations input:last-child {
+    margin-right: 0;
 }

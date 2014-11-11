@@ -10,17 +10,19 @@
     Click to select which image to move.<br>
     Then move the mouse to desired drop location<br>
     and click again to drop the image there.</h5>
-<canvas id="canvas" width=300 height=400></canvas>
-<script>
-    var decorations = [
-        'images/pewter_round_004.png',
-        'images/crystal_004.png',
-        'images/crystal_005.png',
-        'images/crystal_006.png'
-    ];
-</script>
-<button class="js-get-decorations-data">Get decorations data</button>
-<button class="js-set-decorations">Set decorations</button>
+<div class="js-decorations decorations-wrapper">
+    <div class="decorations">
+        <input type="image" class="js-decoration" src="images/pewter_round_004.png" id="button1" width="37" height="35" />
+        <input type="image" class="js-decoration" src="images/crystal_004.png" id="button2" width="48" height="77" />
+        <input type="image" class="js-decoration" src="images/crystal_005.png" id="button3" width="63" height="82" />
+        <input type="image" class="js-decoration" src="images/crystal_006.png" id="button4" width="70" height="93" />
+    </div>
+    <canvas id="canvas" width=300 height=400></canvas>
+    <div>
+        <button class="js-get-decorations-data">Get decorations data</button>
+        <button class="js-set-decorations">Set decorations</button>
+    </div>
+</div>
 </body>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
 <script src="script.js"></script>
@@ -38,6 +40,10 @@
                     }
                 ]
         );
+    });
+
+    $('.js-get-decorations-data').on('click', function () {
+        console.log(window.getDecorationsData());
     });
 </script>
 </html>

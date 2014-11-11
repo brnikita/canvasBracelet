@@ -97,13 +97,15 @@ $(function () {
      * @param {Array} decorationsList
      * @returns {undefined}
      */
-    function fillInitDecorationList(decorationsList) {
-        $.each(decorationsList, function (index, decorationSrc) {
-            var image = new Image(),
+    function fillInitDecorationList() {
+        $('.js-decoration').each(function () {
+            var $decoration = $(this),
+                decorationSrc = $decoration.attr('src'),
+                image = new Image(),
                 newInitialDecoration;
 
             image.src = decorationSrc;
-            newInitialDecoration = new InitDecoration(decorationSrc, index);
+            newInitialDecoration = new InitDecoration(decorationSrc, $decoration.index());
             initDecorationsList.push(newInitialDecoration);
         });
     }
@@ -938,14 +940,8 @@ $(function () {
         drawBracelet();
     });
 
-    $('.js-get-decorations-data').on('click', function () {
-        console.log(getDecorationsData());
-    });
-
-    preLoadDecorations(window.decorations).done(function () {
-        fillInitDecorationList(window.decorations);
-        drawBracelet();
-    });
+    fillInitDecorationList();
+    drawBracelet();
 
     window.setDecorationsData = setDecorationsData;
 });
