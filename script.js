@@ -1,49 +1,17 @@
 $(function () {
-    var canvas = document.getElementById('canvas'),
+    var $canvas = $('#canvas'),
+        canvas = $canvas[0],
         context = canvas.getContext('2d'),
         circleCenterX = canvas.width / 2,
-        circleCenterY = 250,
+        circleCenterY = canvas.height / 2,
         circleRadius = 100,
         isSelecting = false,
+        draggedOutDecoration,
         draggingElement,
         decorationsList = [],
-        initDecorationStartX = 20,
-        initDecorationMargin = 10,
-        initDecorationLineY = 50,
-        initDecorationsList = [],
     //Decoration class
-        Decoration,
-    //Init decoration class
-        InitDecoration;
+        Decoration;
 
-
-    /**
-     * Function fills initial decorations list
-     *
-     * @function
-     * @name preLoadDecorations
-     * @param {Array} decorationsList
-     * @returns {$.Deferred}
-     */
-    function preLoadDecorations(decorationsList) {
-        var loadedDecorations = 0,
-            deferred = $.Deferred();
-
-        $.each(decorationsList, function (index, decorationSrc) {
-            var image = new Image();
-
-            image.src = decorationSrc;
-            image.onload = function () {
-                loadedDecorations++;
-
-                if (loadedDecorations === decorationsList.length) {
-                    deferred.resolve();
-                }
-            }
-        });
-
-        return deferred;
-    }
 
     /**
      * Function returns decorations data
@@ -90,27 +58,6 @@ $(function () {
     }
 
     /**
-     * Function fills initial decorations list
-     *
-     * @function
-     * @name fillInitDecorationList
-     * @param {Array} decorationsList
-     * @returns {undefined}
-     */
-    function fillInitDecorationList() {
-        $('.js-decoration').each(function () {
-            var $decoration = $(this),
-                decorationSrc = $decoration.attr('src'),
-                image = new Image(),
-                newInitialDecoration;
-
-            image.src = decorationSrc;
-            newInitialDecoration = new InitDecoration(decorationSrc, $decoration.index());
-            initDecorationsList.push(newInitialDecoration);
-        });
-    }
-
-    /**
      * Function draws circle in canvas field
      *
      * @function
@@ -143,10 +90,13 @@ $(function () {
      * @returns {{x: number, y: number}}
      */
     function getMousePosition(canvas, event) {
-        var position = canvas.getBoundingClientRect();
+        var position = canvas.getBoundingClientRect(),
+            clientX = event.clientX || event.originalEvent.clientX,
+            clientY = event.clientY || event.originalEvent.clientY;
+
         return {
-            x: event.clientX - position.left,
-            y: event.clientY - position.top
+            x: clientX - position.left,
+            y: clientY - position.top
         };
     }
 
@@ -160,10 +110,6 @@ $(function () {
     function drawBracelet() {
         clearAll();
         drawCircle();
-
-        $.each(initDecorationsList, function (index, decoration) {
-            decoration.draw();
-        });
 
         $.each(decorationsList, function (index, decoration) {
             decoration.draw();
@@ -184,32 +130,34 @@ $(function () {
      * @param {boolean} [isDragging]
      * @param {number} [centerX] if decoration is dragging
      * @param {number} [centerY] if decoration is dragging
-     * @returns {undefined}
+     * @returns {boolean} True if decoration was added successfully
      */
     function addOneToDecorationList(decorationSrc, angle, isDragging, centerX, centerY) {
         var circleLength = 2 * Math.PI * circleRadius,
             decorationsLength = 0,
-            newsDecoration = new Decoration(context, decorationSrc, angle);
+            newDecoration = new Decoration(context, decorationSrc);
 
-        decorationsLength += 2 * newsDecoration.getRadius();
+        decorationsLength += 2 * newDecoration.getRadius();
         $.each(decorationsList, function (index, decoration) {
             decorationsLength += 2 * decoration.getRadius();
         });
 
         if (decorationsLength > circleLength) {
             alert('Is too much decorations!');
-            return;
+            return false;
         }
 
         if (isDragging) {
-            newsDecoration.setSelecting(true);
-            newsDecoration.setDragging(true);
-            newsDecoration.setDraggingPosition(centerX, centerY);
-            draggingElement = newsDecoration;
-            return;
+            newDecoration.setSelecting(true);
+            newDecoration.setDragging(true);
+            newDecoration.setDraggingPosition(centerX, centerY);
+            draggingElement = newDecoration;
+            return true;
         }
 
-        decorationsList.push(newsDecoration);
+        newDecoration.setAngle(angle);
+        decorationsList.push(newDecoration);
+        return true;
     }
 
     /**
@@ -243,164 +191,17 @@ $(function () {
     }
 
     /**
-     * Constructor of initial decoration
-     *
-     * Initial decorations appear on the top of canvas
-     *
-     * @constructor
-     * @param {string} decorationSrc
-     * @param {number} index Decoration order index
-     * @returns {undefined}
-     */
-    InitDecoration = function (decorationSrc, index) {
-        this.image = new Image();
-        this.context = context;
-        this.image.src = decorationSrc;
-        this.index = index;
-    };
-
-    /**
-     * Method returns true if point belongs to decoration
-     *
-     * @method
-     * @name InitDecoration#isPointInside
-     * @param {number} x
-     * @param {number} y
-     * @returns {boolean}
-     */
-    InitDecoration.prototype.isPointInside = function (x, y) {
-        var radius = this.getRadius(),
-            centerX = this.getCenterX(),
-            centerY = this.getCenterY();
-
-        return Math.sqrt(Math.pow((centerX - x), 2) + Math.pow((centerY - y), 2)) < radius;
-    };
-
-    /**
-     * Method returns radius of decoration
-     *
-     * @method
-     * @name InitDecoration#getRadius
-     * @returns {number}
-     */
-    InitDecoration.prototype.getRadius = function () {
-        var width = this.getWidth(),
-            height = this.getHeight();
-
-        if (height > width) {
-            return height / 2;
-        }
-
-        return width / 2;
-    };
-
-    /**
-     * Method returns width of decoration image
-     *
-     * @method
-     * @name InitDecoration#setCenter
-     * @returns {number}
-     */
-    InitDecoration.prototype.getWidth = function () {
-        return this.image.width;
-    };
-
-    /**
-     * Method returns height of decoration image
-     *
-     * @method
-     * @name InitDecoration#setCenter
-     * @returns {number}
-     */
-    InitDecoration.prototype.getHeight = function () {
-        return this.image.height;
-    };
-
-    /**
-     * Method returns x coordinate of decoration center;
-     *
-     * @method
-     * @name InitDecoration#getCenterX
-     * @returns {number}
-     */
-    InitDecoration.prototype.getCenterX = function () {
-        var prevDecoration,
-            prevDecorationWidth,
-            prevDecorationX,
-            currentWidth = this.getWidth();
-
-        if (this.index === 0) {
-            return initDecorationStartX + currentWidth / 2;
-        }
-
-        prevDecoration = this.getPrevious();
-        prevDecorationWidth = prevDecoration.getWidth();
-        prevDecorationX = prevDecoration.getCenterX();
-
-        return prevDecorationX + prevDecorationWidth / 2 + initDecorationMargin + currentWidth / 2;
-    };
-
-    /**
-     * Method returns x coordinate of decoration center;
-     *
-     * @method
-     * @name InitDecoration#getCenterY
-     * @returns {number}
-     */
-    InitDecoration.prototype.getCenterY = function () {
-        return initDecorationLineY;
-    };
-
-    /**
-     * Method returns previous decoration
-     *
-     * @method
-     * @name InitDecoration#getPrevious
-     * @returns {InitDecoration | null}
-     */
-    InitDecoration.prototype.getPrevious = function () {
-        var index = this.index;
-
-        if (index === 0) {
-            return null;
-        }
-
-        return initDecorationsList[index - 1];
-    };
-
-    /**
-     * Method draws initial decoration
-     *
-     * @method
-     * @name InitDecoration#draw
-     * @returns {undefined}
-     */
-    InitDecoration.prototype.draw = function () {
-        var context = this.context,
-            image = this.image,
-            width = this.getWidth(),
-            height = this.getHeight(),
-            centerX = this.getCenterX(),
-            centerY = this.getCenterY();
-
-        context.drawImage(image, centerX - width / 2, centerY - height / 2, width, height);
-    };
-
-    /**
      * Constructor of Decoration class
      *
      * @constructor
      * @param {Object} context Canvas context
      * @param {string} src Url of target image
-     * @param {number} angle
      * @returns {undefined}
      */
-    Decoration = function (context, src, angle) {
+    Decoration = function (context, src) {
         this.image = new Image();
         this.context = context;
         this.image.src = src;
-        this.setAngle(angle);
-        this.setSelecting(false);
     };
 
     /**
@@ -414,7 +215,7 @@ $(function () {
     Decoration.prototype.setDragging = function (dragging) {
         var that = this,
             angle,
-            newsDecoration,
+            newDecoration,
             newDecorationsList = [];
 
         if (dragging) {
@@ -429,9 +230,10 @@ $(function () {
         }
 
         angle = getCircleAngle(draggingElement.getCenterX(), draggingElement.getCenterY());
-        newsDecoration = new Decoration(context, draggingElement.image.src, angle);
-        newsDecoration.setSelecting(true);
-        decorationsList.push(newsDecoration);
+        newDecoration = new Decoration(context, draggingElement.image.src);
+        newDecoration.setAngle(angle);
+        newDecoration.setSelecting(true);
+        decorationsList.push(newDecoration);
         draggingElement = null;
     };
 
@@ -864,11 +666,27 @@ $(function () {
 
     };
 
-    $('#canvas').on('dblclick', function (event) {
+    $('.js-decoration').on('click', function () {
+        var $decoration = $(this),
+            decorationSrc = $decoration.attr('src');
+
+        if (addOneToDecorationList(decorationSrc, 0)) {
+            drawBracelet();
+        }
+    }).on('dragstart', function () {
+        var $decoration = $(this);
+
+        draggedOutDecoration = $decoration.attr('src');
+        return true;
+    }).on('dragend', function () {
+        return false;
+    });
+
+    $canvas.on('dblclick', function (event) {
         var newDecorationsList = [],
             position = getMousePosition(canvas, event),
-            mouseX = parseInt(position.x),
-            mouseY = parseInt(position.y);
+            mouseX = position.x,
+            mouseY = position.y;
 
         $.each(decorationsList, function (index, decoration) {
             if (decoration.isPointInside(mouseX, mouseY)) {
@@ -883,8 +701,8 @@ $(function () {
     }).on('mousemove', function (event) {
         var angle,
             position = getMousePosition(canvas, event),
-            mouseX = parseInt(position.x),
-            mouseY = parseInt(position.y);
+            mouseX = position.x,
+            mouseY = position.y;
 
         if (draggingElement) {
             draggingElement.setDraggingPosition(mouseX, mouseY);
@@ -906,18 +724,8 @@ $(function () {
         }
     }).on('mousedown', function (event) {
         var position = getMousePosition(canvas, event),
-            mouseX = parseInt(position.x),
-            mouseY = parseInt(position.y);
-
-        $.each(initDecorationsList, function (index, decoration) {
-            if (isSelecting) {
-                return;
-            }
-
-            if (decoration.isPointInside(mouseX, mouseY)) {
-                addOneToDecorationList(decoration.image.src, 0, true, mouseX, mouseY);
-            }
-        });
+            mouseX = position.x,
+            mouseY = position.y;
 
         $.each(decorationsList, function (index, decoration) {
             if (decoration.selecting) {
@@ -938,10 +746,25 @@ $(function () {
         }
 
         drawBracelet();
+    }).on('dragenter', function () {
+        $canvas.addClass('dragging-target');
+        return false;
+    }).on('dragleave', function () {
+        $canvas.removeClass('dragging-target');
+        return false;
+    }).on('dragover', function () {
+        return false;
+    }).on('drop', function (event) {
+        var position = getMousePosition(canvas, event),
+            angle = getCircleAngle(position.x, position.y);
+
+        $canvas.removeClass('dragging-target');
+        addOneToDecorationList(draggedOutDecoration, angle);
+        drawBracelet();
+        return false;
     });
 
-    fillInitDecorationList();
     drawBracelet();
-
     window.setDecorationsData = setDecorationsData;
+    window.getDecorationsData = getDecorationsData;
 });

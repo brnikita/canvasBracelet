@@ -1,21 +1,18 @@
 #canvas {
     border: 1px solid red;
-    position: absolute;
-    z-index: 1;
-    background: #fff;
 }
 
-.decorations-wrapper {
-    position: relative;
+#canvas.dragging-target {
+    border-style: dashed;
 }
 
 .decorations {
-    position: absolute;
-    z-index: 0;
+    padding: 0 0 20px 20px;
 }
 
-.decorations input {
+.decorations img {
     margin-right: 12px;
+    cursor: move;
 }
 
 .decorations input:last-child {
